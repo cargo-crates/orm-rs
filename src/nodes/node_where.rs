@@ -1,5 +1,5 @@
 use serde_json::{Value as JsonValue, Result};
-use regex::Regex;
+use crate::methods::full_column_name;
 
 #[derive(Debug)]
 pub struct NodeWhere {
@@ -15,11 +15,7 @@ impl NodeWhere {
         let mut vec = vec![];
         if let JsonValue::Object(map_value) = &self.condition {
             for key in map_value.keys() {
-                let column = if Regex::new(r"\.").unwrap().is_match(key) {
-                    format!("'{}'", key)
-                } else {
-                    format!("`{}`.`{}`", table_name, key)
-                };
+                let column = full_column_name(key, table_name);
                 if let Some(json_value) = map_value.get(key) {
                     match json_value {
                         JsonValue::Array(value) => {
@@ -36,7 +32,7 @@ impl NodeWhere {
                                 }
                             }
                             if values.len() > 0 {
-                                vec.push(format!("{} in [{}]", column, values.join(",")));
+                                vec.push(format!("{} IN [{}]", column, values.join(",")));
                             }
                         },
                         JsonValue::String(value) => {
@@ -73,6 +69,6 @@ mod tests {
             "gender": ["male", "female"],
             "profile": null
         }));
-        assert_eq!(node_where.to_sql("users").unwrap(), "`users`.`active` = 1 and `users`.`age` = 18 and `users`.`gender` in ['male','female'] and `users`.`profile` IS NULL");
+        assert_eq!(node_where.to_sql("users").unwrap(), "`users`.`active` = 1 and `users`.`age` = 18 and `users`.`gender` IN ['male','female'] and `users`.`profile` IS NULL");
     }
 }

@@ -15,7 +15,9 @@ fn main() {
         "gender": ["male", "female"],
         "active": true,
         "profile": null
-    })).r#where(json!({"x": 1})).select(vec!["name", "age"]);
+    })).r#where(json!({"x": 1}))
+        // .except(json!(["where"]))
+        .select(json!(["name", "age"]));
     println!("sql: {}", query.to_sql());
 }
 

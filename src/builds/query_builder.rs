@@ -1,7 +1,6 @@
 use serde_json::Value as JsonValue;
-use regex::Regex;
-use crate::nodes::NodesType;
-use crate::nodes::{NodeWhere};
+use crate::methods::full_column_name;
+use crate::nodes::{NodesType, NodeWhere};
 use crate::traits::ModelAble;
 
 use std::vec::Vec;
@@ -33,14 +32,23 @@ impl QueryBuilder {
             columns: vec![format!("`{}`.*", table_name.clone())],
             wheres: vec![],
             groups: vec![],
-            havings: vec![],
+            havings: vec![]
         }
     }
-    pub fn except(&mut self, columns: Vec<&'static str>) -> &mut Self {
-        for &val in &columns {
-            match val {
-                "where" => self.wheres = vec![],
-                _ => {}
+    pub fn except(&mut self, columns: JsonValue) -> &mut Self {
+        if let JsonValue::Array(columns) = columns {
+            let columns: Vec<_> = columns.into_iter().filter_map(|value| {
+                if let JsonValue::String(value) = value {
+                    Some(value)
+                } else {
+                    None
+                }
+            }).collect();
+            for val in &columns {
+                match val.as_ref() {
+                    "where" => self.wheres = vec![],
+                    _ => {}
+                }
             }
         }
         self
@@ -49,14 +57,15 @@ impl QueryBuilder {
         self.wheres.push(NodesType::Where(NodeWhere::new(condition)));
         self
     }
-    pub fn select(&mut self, columns: Vec<&'static str>) -> &mut Self {
-        self.columns = columns.iter().map(|&value| {
-            if Regex::new(r"\.").unwrap().is_match(value) {
-                format!("{}", value)
-            } else {
-                format!("`{}`.`{}`", self.table_name, value)
-            }
-        }).collect();
+    pub fn select(&mut self, columns: JsonValue) -> &mut Self {
+        if let JsonValue::Array(columns) = columns {
+            self.columns = columns.into_iter().filter_map(|value| {
+                if let JsonValue::String(value) = value {
+                    return Some(full_column_name(&value, &self.table_name));
+                }
+                None
+            }).collect();
+        }
         self
     }
     pub fn to_sql(&self) -> String {
