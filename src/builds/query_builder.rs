@@ -2,6 +2,7 @@ use serde_json::Value as JsonValue;
 use crate::methods::full_column_name;
 use crate::nodes::{NodesType, NodeWhere};
 use crate::traits::ModelAble;
+use std::marker::PhantomData;
 
 use std::vec::Vec;
 // use std::collections::HashMap;
@@ -16,23 +17,23 @@ enum LockModes {
 }
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct QueryBuilder {
-    table_name: String,
+pub struct QueryBuilder<T: ModelAble> {
     columns: Vec<String>,
     wheres: Vec<NodesType>,
     groups: Vec<NodesType>,
     havings: Vec<NodesType>,
+    _marker: PhantomData<T>
 }
 
-impl QueryBuilder {
-    pub fn new<T: ModelAble>() -> Self {
-        let table_name = T::table_name();
+impl<T: ModelAble> QueryBuilder<T> {
+    // pub fn new<T: ModelAble>() -> Self {
+    pub fn new() -> QueryBuilder<T> {
         Self {
-            table_name: table_name.clone(),
-            columns: vec![format!("`{}`.*", table_name.clone())],
+            columns: vec![format!("`{}`.*", T::table_name())],
             wheres: vec![],
             groups: vec![],
-            havings: vec![]
+            havings: vec![],
+            _marker: PhantomData
         }
     }
     pub fn except(&mut self, columns: JsonValue) -> &mut Self {
@@ -61,7 +62,7 @@ impl QueryBuilder {
         if let JsonValue::Array(columns) = columns {
             self.columns = columns.into_iter().filter_map(|value| {
                 if let JsonValue::String(value) = value {
-                    return Some(full_column_name(&value, &self.table_name));
+                    return Some(full_column_name(&value, &T::table_name()));
                 }
                 None
             }).collect();
@@ -69,11 +70,11 @@ impl QueryBuilder {
         self
     }
     pub fn to_sql(&self) -> String {
-        let mut sql = format!("SELECT {} FROM `{}`", self.columns.join(", "), self.table_name);
+        let mut sql = format!("SELECT {} FROM `{}`", self.columns.join(", "), T::table_name());
         if self.wheres.len() > 0 {
             let where_sql: Vec<String> = self.wheres.iter().filter_map(|val| {
                 let NodesType::Where(node_where) = val;
-                Some(node_where.to_sql(&self.table_name))
+                Some(node_where.to_sql(&T::table_name()))
             }).map(|value| value.unwrap()).collect();
             sql = format!("{} WHERE {}", sql, where_sql.join(" AND "))
         }

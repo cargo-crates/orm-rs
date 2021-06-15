@@ -6,8 +6,9 @@ pub trait ModelAble: Sized {
     fn table_name() -> String {
         table_name::<Self>()
     }
-    fn query() -> QueryBuilder {
-        QueryBuilder::new::<Self>()
+    fn query() -> QueryBuilder<Self> {
+        // QueryBuilder::new::<Self>()
+        QueryBuilder::new()
     }
 }
 // pub trait TableExt {
