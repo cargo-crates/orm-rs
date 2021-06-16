@@ -1,6 +1,6 @@
 use serde_json::Value as JsonValue;
 use crate::methods::full_column_name;
-use crate::nodes::{NodesType, NodeWhere};
+use crate::nodes::{NodeAble, NodesType, NodeWhere};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -71,13 +71,14 @@ impl<T: ModelAble> QueryBuilder<T> {
     }
     pub fn to_sql(&self) -> String {
         let mut sql = format!("SELECT {} FROM `{}`", self.columns.join(", "), T::table_name());
+        let mut wheres_sql: Vec<String> = vec![];
         if self.wheres.len() > 0 {
-            let where_sql: Vec<String> = self.wheres.iter().filter_map(|val| {
+            wheres_sql = self.wheres.iter().filter_map(|val| {
                 let NodesType::Where(node_where) = val;
                 Some(node_where.to_sql(&T::table_name()))
-            }).map(|value| value.unwrap()).collect();
-            sql = format!("{} WHERE {}", sql, where_sql.join(" AND "))
+            }).reduce(|a, b| [&a[..], &b[..]].concat()).unwrap();
         }
+        sql = format!("{} WHERE {}", sql, wheres_sql.join(" AND "));
         sql
     }
 }
