@@ -16,8 +16,8 @@ fn main() {
         "active": true,
         "profile": null
     })).r#where(json!({"x": 1}))
-        // .except(json!(["where"]))
-        .select(json!(["name", "age"]));
+        .except(json!(["where"]));
+        // .select(json!(["name", "age"]));
     println!("sql: {}", query.to_sql());
 }
 
