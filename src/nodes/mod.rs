@@ -1,9 +1,11 @@
 mod node_column;
 mod node_where;
+mod node_where_raw;
 mod node_except;
 
 pub use node_column::NodeColumn;
 pub use node_where::NodeWhere;
+pub use node_where_raw::NodeWhereRaw;
 pub use node_except::NodeExcept;
 use serde_json::{Value as JsonValue};
 
@@ -46,6 +48,7 @@ pub trait NodeAble {
 pub enum NodesType {
     Column(NodeColumn),
     Where(NodeWhere),
+    WhereRaw(NodeWhereRaw),
     Except(NodeExcept),
     // Group(NodeGroup),
     // Having(NodeHaving),

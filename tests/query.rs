@@ -26,6 +26,13 @@ mod query {
     }
 
     #[test]
+    fn test_where_raw() {
+        let mut query = User::query();
+        let query = query.r#where_raw("name LIKE ? AND gender in ?", json!(["%王%", ["male", "female"]]));
+        assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` WHERE name LIKE '%王%' AND gender in ('male', 'female')");
+    }
+
+    #[test]
     fn test_except() {
         let mut query = User::query();
         let query = query.r#where(json!({

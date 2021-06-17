@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue, json};
 // use crate::methods::full_column_name;
-use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeWhere, NodeExcept};
+use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeWhere, NodeExcept, NodeWhereRaw};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -35,7 +35,7 @@ impl<T: ModelAble> QueryBuilder<T> {
         if let JsonValue::Array(_) = &condition {
             self.nodes.push(NodesType::Except(NodeExcept::new(condition)));
         } else {
-            println!("Ignore: except only support json array, got: {:?}", condition);
+            panic!("Error: except only support json array, got: {:?}", condition);
         }
         self
     }
@@ -47,11 +47,24 @@ impl<T: ModelAble> QueryBuilder<T> {
         self.nodes.push(NodesType::Where(NodeWhere::new(condition, true)));
         self
     }
+    pub fn r#where_raw(&mut self, raw_sql: &str, placeholder_values: JsonValue) -> &mut Self {
+        let raw_sql_should_value_len = raw_sql.chars().filter(|char| char == &'?').count();
+        if let JsonValue::Array(values) = &placeholder_values {
+            if values.len() == raw_sql_should_value_len {
+                self.nodes.push(NodesType::WhereRaw(NodeWhereRaw::new(raw_sql, placeholder_values)));
+            } else {
+                panic!("Error: where_raw param placeholder_values len incorrect, need len: {}, got len {}, got: {}", raw_sql_should_value_len, values.len(), placeholder_values);
+            }
+        } else {
+            panic!("Error: where_raw param placeholder_values only support json array, got: {:?}", placeholder_values);
+        }
+        self
+    }
     pub fn select(&mut self, condition: JsonValue) -> &mut Self {
         if let JsonValue::Array(_) = &condition {
             self.nodes.push(NodesType::Column(NodeColumn::new(condition)));
         } else {
-            println!("Ignore: select only support json array, got: {:?}", condition);
+            panic!("Error: select only support json array, got: {:?}", condition);
         }
         self
     }
@@ -61,6 +74,9 @@ impl<T: ModelAble> QueryBuilder<T> {
             match node {
                 NodesType::Where(node_where) => {
                     wheres_sql = [&wheres_sql[..], &node_where.to_sql(&T::table_name())].concat()
+                },
+                NodesType::WhereRaw(node_where_raw) => {
+                    wheres_sql = [&wheres_sql[..], &node_where_raw.to_sql(&T::table_name())].concat()
                 },
                 NodesType::Except(node_except) => {
                     match node_except.get_condition() {
