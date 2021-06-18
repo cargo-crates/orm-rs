@@ -28,7 +28,7 @@ mod query {
     #[test]
     fn test_where_raw() {
         let mut query = User::query();
-        let query = query.r#where_raw("name LIKE ? AND gender in ?", json!(["%王%", ["male", "female"]]));
+        let query = query.where_raw("name LIKE ? AND gender in ?", json!(["%王%", ["male", "female"]]));
         assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` WHERE name LIKE '%王%' AND gender in ('male', 'female')");
     }
 
@@ -37,6 +37,18 @@ mod query {
         let mut query = User::query();
         let query = query.group(json!(["age", "gender"]));
         assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` GROUP BY `users`.`age`, `users`.`gender`");
+    }
+
+    #[test]
+    fn test_having() {
+        let mut query = User::query();
+        let query = query
+            .r#where(json!({"active": true}))
+            .group(json!(["age", "gender"]))
+            .having(json!({"gender": ["male", "female"]}))
+            .having_not(json!({"age": 0}))
+            .having_raw("count(*) > ?", json!([3]));
+        assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` WHERE `users`.`active` = 1 GROUP BY `users`.`age`, `users`.`gender` HAVING `users`.`gender` IN ('male', 'female') AND `users`.`age` != 0 AND count(*) > 3");
     }
 
     #[test]
@@ -52,7 +64,7 @@ mod query {
             .group(json!(["gender"]))
             .except(json!(["where", "group"]))
             .r#where(json!({"y": 2}))
-            .r#where_not(json!({
+            .where_not(json!({
                 "z2": "abc",
                 "age": 18,
                 "z1": [1, 2],

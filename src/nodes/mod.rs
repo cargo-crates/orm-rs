@@ -1,12 +1,12 @@
 mod node_column;
-mod node_where;
-mod node_where_raw;
+mod node_filter;
+mod node_filter_raw;
 mod node_group;
 mod node_except;
 
 pub use node_column::NodeColumn;
-pub use node_where::NodeWhere;
-pub use node_where_raw::NodeWhereRaw;
+pub use node_filter::NodeFilter;
+pub use node_filter_raw::NodeFilterRaw;
 pub use node_group::NodeGroup;
 pub use node_except::NodeExcept;
 use serde_json::{Value as JsonValue};
@@ -49,8 +49,8 @@ pub trait NodeAble {
 #[derive(Debug)]
 pub enum NodesType {
     Column(NodeColumn),
-    Where(NodeWhere),
-    WhereRaw(NodeWhereRaw),
+    Filter(NodeFilter),
+    FilterRaw(NodeFilterRaw),
     Except(NodeExcept),
     Group(NodeGroup)
     // Having(NodeHaving),

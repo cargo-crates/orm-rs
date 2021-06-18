@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue, json};
 // use crate::methods::full_column_name;
-use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeWhere, NodeExcept, NodeWhereRaw, NodeGroup};
+use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -32,23 +32,44 @@ impl<T: ModelAble> QueryBuilder<T> {
         }
     }
     pub fn r#where(&mut self, condition: JsonValue) -> &mut Self {
-        self.nodes.push(NodesType::Where(NodeWhere::new(condition, false)));
+        self.nodes.push(NodesType::Filter(NodeFilter::new_where(condition)));
         self
     }
-    pub fn r#where_not(&mut self, condition: JsonValue) -> &mut Self {
-        self.nodes.push(NodesType::Where(NodeWhere::new(condition, true)));
+    pub fn where_not(&mut self, condition: JsonValue) -> &mut Self {
+        self.nodes.push(NodesType::Filter(NodeFilter::new_where_not(condition)));
         self
     }
-    pub fn r#where_raw(&mut self, raw_sql: &str, placeholder_values: JsonValue) -> &mut Self {
+    pub fn having(&mut self, condition: JsonValue) -> &mut Self {
+        self.nodes.push(NodesType::Filter(NodeFilter::new_having(condition)));
+        self
+    }
+    pub fn having_not(&mut self, condition: JsonValue) -> &mut Self {
+        self.nodes.push(NodesType::Filter(NodeFilter::new_having_not(condition)));
+        self
+    }
+    pub fn where_raw(&mut self, raw_sql: &str, placeholder_values: JsonValue) -> &mut Self {
         let raw_sql_should_value_len = raw_sql.chars().filter(|char| char == &'?').count();
         if let JsonValue::Array(values) = &placeholder_values {
             if values.len() == raw_sql_should_value_len {
-                self.nodes.push(NodesType::WhereRaw(NodeWhereRaw::new(raw_sql, placeholder_values)));
+                self.nodes.push(NodesType::FilterRaw(NodeFilterRaw::new_where(raw_sql, placeholder_values)));
             } else {
                 panic!("Error: where_raw param placeholder_values len incorrect, need len: {}, got len {}, got: {}", raw_sql_should_value_len, values.len(), placeholder_values);
             }
         } else {
             panic!("Error: where_raw param placeholder_values only support json array, got: {:?}", placeholder_values);
+        }
+        self
+    }
+    pub fn having_raw(&mut self, raw_sql: &str, placeholder_values: JsonValue) -> &mut Self {
+        let raw_sql_should_value_len = raw_sql.chars().filter(|char| char == &'?').count();
+        if let JsonValue::Array(values) = &placeholder_values {
+            if values.len() == raw_sql_should_value_len {
+                self.nodes.push(NodesType::FilterRaw(NodeFilterRaw::new_having(raw_sql, placeholder_values)));
+            } else {
+                panic!("Error: having_raw param placeholder_values len incorrect, need len: {}, got len {}, got: {}", raw_sql_should_value_len, values.len(), placeholder_values);
+            }
+        } else {
+            panic!("Error: having_raw param placeholder_values only support json array, got: {:?}", placeholder_values);
         }
         self
     }
@@ -78,14 +99,23 @@ impl<T: ModelAble> QueryBuilder<T> {
     }
     pub fn to_sql(&self) -> String {
         let mut wheres_sql: Vec<String> = vec![];
+        let mut havings_sql: Vec<String> = vec![];
         let mut groups_sql: Vec<String> = vec![];
         for node in &self.nodes {
             match node {
-                NodesType::Where(node_where) => {
-                    wheres_sql = [&wheres_sql[..], &node_where.to_sql(&T::table_name())].concat()
+                NodesType::Filter(node_filter) => {
+                    match node_filter.get_type() {
+                        "where" => wheres_sql = [&wheres_sql[..], &node_filter.to_sql(&T::table_name())].concat(),
+                        "having" => havings_sql = [&havings_sql[..], &node_filter.to_sql(&T::table_name())].concat(),
+                        _ => ()
+                    }
                 },
-                NodesType::WhereRaw(node_where_raw) => {
-                    wheres_sql = [&wheres_sql[..], &node_where_raw.to_sql(&T::table_name())].concat()
+                NodesType::FilterRaw(node_filter_raw) => {
+                    match node_filter_raw.get_type() {
+                        "where" => wheres_sql = [&wheres_sql[..], &node_filter_raw.to_sql(&T::table_name())].concat(),
+                        "having" => havings_sql = [&havings_sql[..], &node_filter_raw.to_sql(&T::table_name())].concat(),
+                        _ => ()
+                    }
                 },
                 NodesType::Group(node_group) => {
                   groups_sql = [&groups_sql[..], &node_group.to_sql(&T::table_name())].concat()
@@ -100,6 +130,7 @@ impl<T: ModelAble> QueryBuilder<T> {
                                 match val.to_lowercase().as_ref() {
                                     "where" => { wheres_sql = vec![] },
                                     "group" => { groups_sql = vec![] },
+                                    "having" => { havings_sql = vec![] },
                                     _ => {}
                                 }
                             }
@@ -125,14 +156,17 @@ impl<T: ModelAble> QueryBuilder<T> {
         }
         if groups_sql.len() > 0 {
             sql = format!("{} GROUP BY {}", sql, groups_sql.join(", "));
+            if havings_sql.len() > 0 {
+                sql = format!("{} HAVING {}", sql, havings_sql.join(" AND "));
+            }
         }
         sql
     }
     fn get_column_nodes(&self) -> Vec<&NodesType> {
         self.nodes.iter().filter(|&node| match node { NodesType::Column(_) => true, _ => false }).collect()
     }
-    // fn get_where_nodes(&self) -> Vec<&NodesType> {
-    //     self.nodes.iter().filter(|&node| match node { NodesType::Where(_) => true, _ => false }).collect()
+    // fn get_where_filters(&self) -> Vec<&NodesType> {
+    //     self.nodes.iter().filter(|&node| match node { NodesType::Filter(_) => true, _ => false }).collect()
     // }
     // fn get_except_nodes(&self) -> Vec<&NodesType> {
     //     self.nodes.iter().filter(|&node| match node { NodesType::Except(_) => true, _ => false }).collect()

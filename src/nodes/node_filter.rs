@@ -3,19 +3,36 @@ use crate::nodes::NodeAble;
 use crate::methods::full_column_name;
 
 #[derive(Debug)]
-pub struct NodeWhere {
+pub struct NodeFilter {
     condition: JsonValue,
-    is_not: bool
+    is_not: bool,
+    r#type: String
 }
-impl NodeWhere {
-    pub fn new(condition: JsonValue, is_not: bool) -> Self {
+impl NodeFilter {
+    fn new(condition: JsonValue, is_not: bool, r#type: &str) -> Self {
         Self {
             condition,
-            is_not
+            is_not,
+            r#type: r#type.to_string()
         }
     }
+    pub fn new_where(condition: JsonValue) -> Self {
+        Self::new(condition, false, "where")
+    }
+    pub fn new_where_not(condition: JsonValue) -> Self {
+        Self::new(condition, true, "where")
+    }
+    pub fn new_having(condition: JsonValue) -> Self {
+        Self::new(condition, false, "having")
+    }
+    pub fn new_having_not(condition: JsonValue) -> Self {
+        Self::new(condition, true, "having")
+    }
+    pub fn get_type(&self) -> &str {
+        &self.r#type
+    }
 }
-impl NodeAble for NodeWhere {
+impl NodeAble for NodeFilter {
     fn get_condition(&self) -> &JsonValue {
         &self.condition
     }
@@ -92,20 +109,36 @@ mod tests {
     use serde_json::json;
     #[test]
     fn to_sql() {
-        let node_where = NodeWhere::new(json!({
+        let node_filter = NodeFilter::new_where(json!({
             "active": true,
             "age": 18,
             "gender": ["male", "female"],
             "profile": null
-        }), false);
-        assert_eq!(node_where.to_sql("users").join(" AND "), "`users`.`active` = 1 AND `users`.`age` = 18 AND `users`.`gender` IN ('male', 'female') AND `users`.`profile` IS NULL");
+        }));
+        assert_eq!(node_filter.to_sql("users").join(" AND "), "`users`.`active` = 1 AND `users`.`age` = 18 AND `users`.`gender` IN ('male', 'female') AND `users`.`profile` IS NULL");
 
-        let node_where = NodeWhere::new(json!({
+        let node_filter = NodeFilter::new_where_not(json!({
             "active": true,
             "age": 18,
             "gender": ["male", "female"],
             "profile": null
-        }), true);
-        assert_eq!(node_where.to_sql("users").join(" AND "), "`users`.`active` != 1 AND `users`.`age` != 18 AND `users`.`gender` NOT IN ('male', 'female') AND `users`.`profile` IS NOT NULL");
+        }));
+        assert_eq!(node_filter.to_sql("users").join(" AND "), "`users`.`active` != 1 AND `users`.`age` != 18 AND `users`.`gender` NOT IN ('male', 'female') AND `users`.`profile` IS NOT NULL");
+        // having
+        let node_filter = NodeFilter::new_having(json!({
+            "active": true,
+            "age": 18,
+            "gender": ["male", "female"],
+            "profile": null
+        }));
+        assert_eq!(node_filter.to_sql("users").join(" AND "), "`users`.`active` = 1 AND `users`.`age` = 18 AND `users`.`gender` IN ('male', 'female') AND `users`.`profile` IS NULL");
+
+        let node_filter = NodeFilter::new_having_not(json!({
+            "active": true,
+            "age": 18,
+            "gender": ["male", "female"],
+            "profile": null
+        }));
+        assert_eq!(node_filter.to_sql("users").join(" AND "), "`users`.`active` != 1 AND `users`.`age` != 18 AND `users`.`gender` NOT IN ('male', 'female') AND `users`.`profile` IS NOT NULL");
     }
 }
