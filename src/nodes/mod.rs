@@ -2,12 +2,14 @@ mod node_column;
 mod node_filter;
 mod node_filter_raw;
 mod node_group;
+mod node_order;
 mod node_except;
 
 pub use node_column::NodeColumn;
 pub use node_filter::NodeFilter;
 pub use node_filter_raw::NodeFilterRaw;
 pub use node_group::NodeGroup;
+pub use node_order::NodeOrder;
 pub use node_except::NodeExcept;
 use serde_json::{Value as JsonValue};
 
@@ -52,6 +54,6 @@ pub enum NodesType {
     Filter(NodeFilter),
     FilterRaw(NodeFilterRaw),
     Except(NodeExcept),
-    Group(NodeGroup)
-    // Having(NodeHaving),
+    Group(NodeGroup),
+    Order(NodeOrder)
 }

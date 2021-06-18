@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue, json};
 // use crate::methods::full_column_name;
-use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup};
+use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -81,6 +81,14 @@ impl<T: ModelAble> QueryBuilder<T> {
         }
         self
     }
+    pub fn order(&mut self, condition: JsonValue) -> &mut Self {
+        match &condition {
+            JsonValue::Array(_) => self.nodes.push(NodesType::Order(NodeOrder::new(condition))),
+            JsonValue::Object(_) => self.nodes.push(NodesType::Order(NodeOrder::new(condition))),
+            _ => panic!("Error: order only support json array, got: {:?}", condition)
+        }
+        self
+    }
     pub fn except(&mut self, condition: JsonValue) -> &mut Self {
         if let JsonValue::Array(_) = &condition {
             self.nodes.push(NodesType::Except(NodeExcept::new(condition)));
@@ -101,6 +109,7 @@ impl<T: ModelAble> QueryBuilder<T> {
         let mut wheres_sql: Vec<String> = vec![];
         let mut havings_sql: Vec<String> = vec![];
         let mut groups_sql: Vec<String> = vec![];
+        let mut orders_sql: Vec<String> = vec![];
         for node in &self.nodes {
             match node {
                 NodesType::Filter(node_filter) => {
@@ -120,6 +129,9 @@ impl<T: ModelAble> QueryBuilder<T> {
                 NodesType::Group(node_group) => {
                   groups_sql = [&groups_sql[..], &node_group.to_sql(&T::table_name())].concat()
                 },
+                NodesType::Order(node_order) => {
+                    orders_sql = [&orders_sql[..], &node_order.to_sql(&T::table_name())].concat()
+                },
                 NodesType::Except(node_except) => {
                     match node_except.get_condition() {
                         JsonValue::Array(json_array) => {
@@ -131,6 +143,7 @@ impl<T: ModelAble> QueryBuilder<T> {
                                     "where" => { wheres_sql = vec![] },
                                     "group" => { groups_sql = vec![] },
                                     "having" => { havings_sql = vec![] },
+                                    "order" => { orders_sql = vec![] },
                                     _ => {}
                                 }
                             }
@@ -159,6 +172,9 @@ impl<T: ModelAble> QueryBuilder<T> {
             if havings_sql.len() > 0 {
                 sql = format!("{} HAVING {}", sql, havings_sql.join(" AND "));
             }
+        }
+        if orders_sql.len() > 0 {
+            sql = format!("{} ORDER BY {}", sql, orders_sql.join(", "));
         }
         sql
     }
