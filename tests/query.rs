@@ -33,6 +33,13 @@ mod query {
     }
 
     #[test]
+    fn test_group() {
+        let mut query = User::query();
+        let query = query.group(json!(["age", "gender"]));
+        assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` GROUP BY `users`.`age`, `users`.`gender`");
+    }
+
+    #[test]
     fn test_except() {
         let mut query = User::query();
         let query = query.r#where(json!({
@@ -42,7 +49,8 @@ mod query {
             "active": true,
             "profile": null
         })).r#where(json!({"x": 1}))
-            .except(json!(["where"]))
+            .group(json!(["gender"]))
+            .except(json!(["where", "group"]))
             .r#where(json!({"y": 2}))
             .r#where_not(json!({
                 "z2": "abc",

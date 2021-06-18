@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue, json};
 // use crate::methods::full_column_name;
-use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeWhere, NodeExcept, NodeWhereRaw};
+use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeWhere, NodeExcept, NodeWhereRaw, NodeGroup};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -31,14 +31,6 @@ impl<T: ModelAble> QueryBuilder<T> {
             _marker: PhantomData
         }
     }
-    pub fn except(&mut self, condition: JsonValue) -> &mut Self {
-        if let JsonValue::Array(_) = &condition {
-            self.nodes.push(NodesType::Except(NodeExcept::new(condition)));
-        } else {
-            panic!("Error: except only support json array, got: {:?}", condition);
-        }
-        self
-    }
     pub fn r#where(&mut self, condition: JsonValue) -> &mut Self {
         self.nodes.push(NodesType::Where(NodeWhere::new(condition, false)));
         self
@@ -60,6 +52,22 @@ impl<T: ModelAble> QueryBuilder<T> {
         }
         self
     }
+    pub fn group(&mut self, condition: JsonValue) -> &mut Self {
+        if let JsonValue::Array(_) = &condition {
+            self.nodes.push(NodesType::Group(NodeGroup::new(condition)));
+        } else {
+            panic!("Error: group only support json array, got: {:?}", condition);
+        }
+        self
+    }
+    pub fn except(&mut self, condition: JsonValue) -> &mut Self {
+        if let JsonValue::Array(_) = &condition {
+            self.nodes.push(NodesType::Except(NodeExcept::new(condition)));
+        } else {
+            panic!("Error: except only support json array, got: {:?}", condition);
+        }
+        self
+    }
     pub fn select(&mut self, condition: JsonValue) -> &mut Self {
         if let JsonValue::Array(_) = &condition {
             self.nodes.push(NodesType::Column(NodeColumn::new(condition)));
@@ -70,6 +78,7 @@ impl<T: ModelAble> QueryBuilder<T> {
     }
     pub fn to_sql(&self) -> String {
         let mut wheres_sql: Vec<String> = vec![];
+        let mut groups_sql: Vec<String> = vec![];
         for node in &self.nodes {
             match node {
                 NodesType::Where(node_where) => {
@@ -77,6 +86,9 @@ impl<T: ModelAble> QueryBuilder<T> {
                 },
                 NodesType::WhereRaw(node_where_raw) => {
                     wheres_sql = [&wheres_sql[..], &node_where_raw.to_sql(&T::table_name())].concat()
+                },
+                NodesType::Group(node_group) => {
+                  groups_sql = [&groups_sql[..], &node_group.to_sql(&T::table_name())].concat()
                 },
                 NodesType::Except(node_except) => {
                     match node_except.get_condition() {
@@ -87,6 +99,7 @@ impl<T: ModelAble> QueryBuilder<T> {
                             for val in columns {
                                 match val.to_lowercase().as_ref() {
                                     "where" => { wheres_sql = vec![] },
+                                    "group" => { groups_sql = vec![] },
                                     _ => {}
                                 }
                             }
@@ -109,6 +122,9 @@ impl<T: ModelAble> QueryBuilder<T> {
         let mut sql = format!("SELECT {} FROM `{}`", columns_sql.join(", "), T::table_name());
         if wheres_sql.len() > 0 {
             sql = format!("{} WHERE {}", sql, wheres_sql.join(" AND "));
+        }
+        if groups_sql.len() > 0 {
+            sql = format!("{} GROUP BY {}", sql, groups_sql.join(", "));
         }
         sql
     }
