@@ -54,7 +54,7 @@ pub trait NodeAble {
 //         }
 //     }
 // }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum NodesType {
     Bool(NodeBool),
     Size(NodeSize),

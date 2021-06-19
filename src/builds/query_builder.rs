@@ -16,7 +16,7 @@ enum LockModes {
     ForShare, ForUpdate
 }
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct QueryBuilder<T: ModelAble> {
     nodes: Vec<NodesType>,
     _marker: PhantomData<T>

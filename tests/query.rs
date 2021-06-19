@@ -1,6 +1,7 @@
 use orm_rs::traits::ModelAble;
 use serde_json::json;
 
+#[derive(Clone, Debug)]
 struct User {}
 
 impl ModelAble for User {
@@ -14,15 +15,17 @@ mod query {
     use super::*;
     #[test]
     fn test_where() {
-        let mut query = User::query();
-        let query = query.r#where(json!({
-        "name": "zhangsan",
-        "age": 18,
-        "gender": ["male", "female"],
-        "active": true,
-        "profile": null
-    })).r#where(json!({"x": 1}));
+            let mut query = User::query();
+            let query_clone = query.clone();
+            let query = query.r#where(json!({
+            "name": "zhangsan",
+            "age": 18,
+            "gender": ["male", "female"],
+            "active": true,
+            "profile": null
+        })).r#where(json!({"x": 1}));
         assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` WHERE `users`.`active` = 1 AND `users`.`age` = 18 AND `users`.`gender` IN ('male', 'female') AND `users`.`name` = 'zhangsan' AND `users`.`profile` IS NULL AND `users`.`x` = 1");
+        assert_eq!(query_clone.to_sql(), "SELECT `users`.* FROM `users`");
     }
 
     #[test]

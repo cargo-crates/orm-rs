@@ -1,7 +1,7 @@
 use serde_json::{Value as JsonValue};
 use crate::nodes::NodeAble;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NodeExcept {
     condition: JsonValue
 }

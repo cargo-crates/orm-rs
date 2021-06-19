@@ -2,7 +2,7 @@ use serde_json::{json, Value as JsonValue};
 use crate::nodes::NodeAble;
 use crate::methods::full_column_name;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NodeOp {
     condition: JsonValue,
     field: String,

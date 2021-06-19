@@ -3,7 +3,7 @@ use regex::Regex;
 use crate::nodes::NodeAble;
 use crate::methods::full_column_name;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NodeOrder {
     condition: JsonValue
 }

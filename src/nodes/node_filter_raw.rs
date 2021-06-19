@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue};
 use crate::nodes::NodeAble;
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NodeFilterRaw {
     raw_sql: String,
     // placeholder values

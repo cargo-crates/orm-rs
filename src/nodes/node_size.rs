@@ -1,7 +1,7 @@
 use serde_json::{json, Value as JsonValue};
 use crate::nodes::NodeAble;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NodeSize {
     condition: JsonValue,
     value: usize,
