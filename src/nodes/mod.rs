@@ -66,3 +66,5 @@ pub enum NodesType {
     Order(NodeOrder),
     Op(NodeOp)
 }
+
+impl NodesType {}

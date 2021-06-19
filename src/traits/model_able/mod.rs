@@ -1,4 +1,4 @@
-use crate::builds::query_builder::QueryBuilder;
+use crate::builders::query_builder::QueryBuilder;
 use crate::methods::{table_name};
 
 pub trait ModelAble: Sized {

@@ -15,9 +15,9 @@ mod query {
     use super::*;
     #[test]
     fn test_where() {
-            let mut query = User::query();
-            let query_clone = query.clone();
-            let query = query.r#where(json!({
+        let mut query = User::query();
+        let query_clone = query.clone();
+        let query = query.r#where(json!({
             "name": "zhangsan",
             "age": 18,
             "gender": ["male", "female"],
