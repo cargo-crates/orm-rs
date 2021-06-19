@@ -111,4 +111,38 @@ mod query {
         query.except(json!(["limit"]));
         assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users`");
     }
+
+    #[test]
+    fn test_count() {
+        let mut query = User::query();
+        let query = query.count();
+        assert_eq!(query.to_sql(), "SELECT COUNT(`users`.*) FROM `users`");
+
+        let mut query = User::query();
+        let query = query.select(json!(["name", "id"])).distinct().count();
+        assert_eq!(query.to_sql(), "SELECT COUNT(DISTINCT `users`.`name`, `users`.`id`) FROM `users`");
+    }
+
+    #[test]
+    fn test_sum_avg_min_max() {
+        let mut query = User::query();
+        let query = query.sum("id");
+        assert_eq!(query.to_sql(), "SELECT SUM(`users`.`id`) FROM `users`");
+
+        let mut query = User::query();
+        let query = query.select(json!(["id", "name"])).distinct().sum("id");
+        assert_eq!(query.to_sql(), "SELECT SUM(DISTINCT `users`.`id`) FROM `users`");
+
+        let mut query = User::query();
+        let query = query.avg("id");
+        assert_eq!(query.to_sql(), "SELECT AVG(`users`.`id`) FROM `users`");
+
+        let mut query = User::query();
+        let query = query.min("id");
+        assert_eq!(query.to_sql(), "SELECT MIN(`users`.`id`) FROM `users`");
+
+        let mut query = User::query();
+        let query = query.max("id");
+        assert_eq!(query.to_sql(), "SELECT MAX(`users`.`id`) FROM `users`");
+    }
 }

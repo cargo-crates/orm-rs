@@ -6,6 +6,7 @@ mod node_filter_raw;
 mod node_group;
 mod node_order;
 mod node_except;
+mod node_op;
 
 pub use node_column::NodeColumn;
 pub use node_bool::NodeBool;
@@ -15,6 +16,7 @@ pub use node_filter_raw::NodeFilterRaw;
 pub use node_group::NodeGroup;
 pub use node_order::NodeOrder;
 pub use node_except::NodeExcept;
+pub use node_op::NodeOp;
 use serde_json::{Value as JsonValue};
 
 pub trait NodeAble {
@@ -61,5 +63,6 @@ pub enum NodesType {
     FilterRaw(NodeFilterRaw),
     Except(NodeExcept),
     Group(NodeGroup),
-    Order(NodeOrder)
+    Order(NodeOrder),
+    Op(NodeOp)
 }

@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue, json};
 // use crate::methods::full_column_name;
-use crate::nodes::{NodeAble, NodesType, NodeBool, NodeSize, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder};
+use crate::nodes::{NodeAble, NodesType, NodeBool, NodeSize, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder, NodeOp};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -109,12 +109,40 @@ impl<T: ModelAble> QueryBuilder<T> {
         self.nodes.push(NodesType::Bool(NodeBool::new_distinct()));
         self
     }
-    pub fn paginate(&mut self, page: usize, per_page: usize) -> &mut Self {
-        let offset = (page - 1) * per_page;
-        self.nodes.push(NodesType::Size(NodeSize::new_limit(per_page)));
+    pub fn limit(&mut self, limit: usize) -> &mut Self {
+        self.nodes.push(NodesType::Size(NodeSize::new_limit(limit)));
+        self
+    }
+    pub fn offset(&mut self, offset: usize) -> &mut Self {
         self.nodes.push(NodesType::Size(NodeSize::new_offset(offset)));
         self
     }
+    pub fn paginate(&mut self, page: usize, per_page: usize) -> &mut Self {
+        let offset = (page - 1) * per_page;
+        self.limit(per_page).offset(offset);
+        self
+    }
+    pub fn count(&mut self) -> &mut Self {
+        self.nodes.push(NodesType::Op(NodeOp::new_count()));
+        self
+    }
+    pub fn sum(&mut self, field: &str) -> &mut Self {
+        self.nodes.push(NodesType::Op(NodeOp::new_sum(field)));
+        self
+    }
+    pub fn avg(&mut self, field: &str) -> &mut Self {
+        self.nodes.push(NodesType::Op(NodeOp::new_avg(field)));
+        self
+    }
+    pub fn min(&mut self, field: &str) -> &mut Self {
+        self.nodes.push(NodesType::Op(NodeOp::new_min(field)));
+        self
+    }
+    pub fn max(&mut self, field: &str) -> &mut Self {
+        self.nodes.push(NodesType::Op(NodeOp::new_max(field)));
+        self
+    }
+
     pub fn to_sql(&self) -> String {
         let mut wheres_sql: Vec<String> = vec![];
         let mut havings_sql: Vec<String> = vec![];
@@ -172,7 +200,7 @@ impl<T: ModelAble> QueryBuilder<T> {
                       "distinct" => is_distinct = true,
                       _ => ()
                   }
-                }
+                },
                 _ => ()
             }
         }
@@ -184,12 +212,32 @@ impl<T: ModelAble> QueryBuilder<T> {
                 columns_sql = node_column.to_value(&T::table_name());
             }
         }
+        // op_nodes
+        let op_nodes = self.get_op_nodes();
         // create sql
         let mut sql = "SELECT".to_string();
+        let mut distinct_sql = "";
         if is_distinct {
-            sql = format!("{} DISTINCT", sql)
+            distinct_sql = "DISTINCT ";
         }
-        sql = format!("{} {} FROM `{}`", sql, columns_sql.join(", "), T::table_name());
+        match op_nodes.last() {
+            Some(node_type) => {
+                if let NodesType::Op(node_op) = node_type {
+                    match node_op.get_type() {
+                        "count" => sql = format!("{} COUNT({}{})", sql, distinct_sql, columns_sql.join(", ")),
+                        "sum" => sql = format!("{} SUM({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
+                        "avg" => sql = format!("{} AVG({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
+                        "min" => sql = format!("{} MIN({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
+                        "max" => sql = format!("{} MAX({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
+                        _ => ()
+                    }
+                }
+            },
+            None => {
+                sql = format!("{} {}{}", sql, distinct_sql, columns_sql.join(", "))
+            }
+        }
+        sql = format!("{} FROM `{}`", sql, T::table_name());
         if wheres_sql.len() > 0 {
             sql = format!("{} WHERE {}", sql, wheres_sql.join(" AND "));
         }
@@ -216,6 +264,9 @@ impl<T: ModelAble> QueryBuilder<T> {
     }
     fn get_column_nodes(&self) -> Vec<&NodesType> {
         self.nodes.iter().filter(|&node| match node { NodesType::Column(_) => true, _ => false }).collect()
+    }
+    fn get_op_nodes(&self) -> Vec<&NodesType> {
+        self.nodes.iter().filter(|&node| match node { NodesType::Op(_) => true, _ => false }).collect()
     }
     // fn get_where_filters(&self) -> Vec<&NodesType> {
     //     self.nodes.iter().filter(|&node| match node { NodesType::Filter(_) => true, _ => false }).collect()
