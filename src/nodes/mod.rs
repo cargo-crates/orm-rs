@@ -1,5 +1,6 @@
 mod node_column;
 mod node_bool;
+mod node_size;
 mod node_filter;
 mod node_filter_raw;
 mod node_group;
@@ -8,6 +9,7 @@ mod node_except;
 
 pub use node_column::NodeColumn;
 pub use node_bool::NodeBool;
+pub use node_size::NodeSize;
 pub use node_filter::NodeFilter;
 pub use node_filter_raw::NodeFilterRaw;
 pub use node_group::NodeGroup;
@@ -53,6 +55,7 @@ pub trait NodeAble {
 #[derive(Debug)]
 pub enum NodesType {
     Bool(NodeBool),
+    Size(NodeSize),
     Column(NodeColumn),
     Filter(NodeFilter),
     FilterRaw(NodeFilterRaw),

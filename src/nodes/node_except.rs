@@ -29,6 +29,8 @@ impl NodeAble for NodeExcept {
                         "group" => { vec.push("group".to_string()) },
                         "having" => { vec.push("having".to_string()) },
                         "order" => { vec.push("order".to_string()) },
+                        "limit" => { vec.push("limit".to_string()) },
+                        "offset" => { vec.push("offset".to_string()) },
                         "distinct" => { vec.push("distinct".to_string()) },
                         _ => {}
                     }

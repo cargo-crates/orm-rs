@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue, json};
 // use crate::methods::full_column_name;
-use crate::nodes::{NodeAble, NodesType, NodeBool, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder};
+use crate::nodes::{NodeAble, NodesType, NodeBool, NodeSize, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -109,11 +109,19 @@ impl<T: ModelAble> QueryBuilder<T> {
         self.nodes.push(NodesType::Bool(NodeBool::new_distinct()));
         self
     }
+    pub fn paginate(&mut self, page: usize, per_page: usize) -> &mut Self {
+        let offset = (page - 1) * per_page;
+        self.nodes.push(NodesType::Size(NodeSize::new_limit(per_page)));
+        self.nodes.push(NodesType::Size(NodeSize::new_offset(offset)));
+        self
+    }
     pub fn to_sql(&self) -> String {
         let mut wheres_sql: Vec<String> = vec![];
         let mut havings_sql: Vec<String> = vec![];
         let mut groups_sql: Vec<String> = vec![];
         let mut orders_sql: Vec<String> = vec![];
+        let mut limits_sql: Vec<String> = vec![];
+        let mut offsets_sql: Vec<String> = vec![];
         let mut is_distinct = false;
         for node in &self.nodes {
             match node {
@@ -145,9 +153,18 @@ impl<T: ModelAble> QueryBuilder<T> {
                             "group" => { groups_sql = vec![] },
                             "having" => { havings_sql = vec![] },
                             "order" => { orders_sql = vec![] },
+                            "limit" => { limits_sql = vec![] },
+                            "offset" => { offsets_sql = vec![] },
                             "distinct" => { is_distinct = false },
                             _ => {}
                         }
+                    }
+                },
+                NodesType::Size(node_size) => {
+                    match node_size.get_type() {
+                        "limit" => limits_sql = [&limits_sql[..], &node_size.to_value(&T::table_name())].concat(),
+                        "offset" => offsets_sql = [&offsets_sql[..], &node_size.to_value(&T::table_name())].concat(),
+                        _ => ()
                     }
                 },
                 NodesType::Bool(node_bool) => {
@@ -155,7 +172,7 @@ impl<T: ModelAble> QueryBuilder<T> {
                       "distinct" => is_distinct = true,
                       _ => ()
                   }
-                },
+                }
                 _ => ()
             }
         }
@@ -184,6 +201,16 @@ impl<T: ModelAble> QueryBuilder<T> {
         }
         if orders_sql.len() > 0 {
             sql = format!("{} ORDER BY {}", sql, orders_sql.join(", "));
+        }
+        if limits_sql.len() > 0 {
+            if let Some(limit) = limits_sql.last() {
+                sql = format!("{} {}", sql, limit)
+            }
+        }
+        if offsets_sql.len() > 0 {
+            if let Some(offset) = offsets_sql.last() {
+                sql = format!("{} {}", sql, offset)
+            }
         }
         sql
     }

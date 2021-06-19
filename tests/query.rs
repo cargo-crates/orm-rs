@@ -60,6 +60,8 @@ mod query {
         assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` ORDER BY `users`.`name` DESC");
         query.order(json!(["gender", "age DESC"]));
         assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` ORDER BY `users`.`name` DESC, gender ASC, age DESC");
+        query.except(json!(["order"]));
+        assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users`");
     }
     #[test]
     fn test_except() {
@@ -81,7 +83,7 @@ mod query {
                 "inactive": false,
                 "address": null,
 
-            })).order(json!(["gender DESC"])).except(json!(["order"]));
+            }));
         assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` WHERE `users`.`y` = 2 AND `users`.`address` IS NOT NULL AND `users`.`age` != 18 AND `users`.`inactive` != 0 AND `users`.`z1` NOT IN (1, 2) AND `users`.`z2` != 'abc'");
     }
 
@@ -97,5 +99,16 @@ mod query {
         let mut query = User::query();
         let query = query.distinct();
         assert_eq!(query.to_sql(), "SELECT DISTINCT `users`.* FROM `users`");
+    }
+
+    #[test]
+    fn test_paginate() {
+        let mut query = User::query();
+        let query = query.paginate(1, 10);
+        assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` LIMIT 10 OFFSET 0");
+        query.except(json!(["offset"]));
+        assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users` LIMIT 10");
+        query.except(json!(["limit"]));
+        assert_eq!(query.to_sql(), "SELECT `users`.* FROM `users`");
     }
 }
