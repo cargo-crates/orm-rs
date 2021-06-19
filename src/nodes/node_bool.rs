@@ -26,7 +26,7 @@ impl NodeAble for NodeBool {
     fn get_condition(&self) -> &JsonValue {
         &self.condition
     }
-    fn to_sql(&self, _table_name: &str) -> Vec<String> {
+    fn to_value(&self, _table_name: &str) -> Vec<String> {
         vec!["DISTINCT".to_string()]
     }
 }
@@ -36,8 +36,8 @@ mod tests {
     use super::*;
     // use serde_json::json;
     #[test]
-    fn to_sql() {
+    fn to_value() {
         let node_bool = NodeBool::new_distinct();
-        assert_eq!(node_bool.to_sql("users"), vec!["DISTINCT"]);
+        assert_eq!(node_bool.to_value("users"), vec!["DISTINCT"]);
     }
 }

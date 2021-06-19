@@ -29,7 +29,7 @@ impl NodeAble for NodeFilterRaw {
     fn get_condition(&self) -> &JsonValue {
         &self.condition
     }
-    fn to_sql(&self, _table_name: &str) -> Vec<String> {
+    fn to_value(&self, _table_name: &str) -> Vec<String> {
         let mut values: Vec<JsonValue> = vec![];
         match self.get_condition() {
             JsonValue::Array(json_array) => {
@@ -83,27 +83,27 @@ mod tests {
     use super::*;
     use serde_json::json;
     #[test]
-    fn to_sql() {
+    fn to_value() {
         // raw
         let node_filter_raw = NodeFilterRaw::new_where("name LIKE 'N%'", json!([]));
-        assert_eq!(node_filter_raw.to_sql("users"), vec!["name LIKE 'N%'"]);
+        assert_eq!(node_filter_raw.to_value("users"), vec!["name LIKE 'N%'"]);
         // str
         let node_filter_raw = NodeFilterRaw::new_where("name LIKE ?", json!(["N%"]));
-        assert_eq!(node_filter_raw.to_sql("users"), vec!["name LIKE 'N%'"]);
+        assert_eq!(node_filter_raw.to_value("users"), vec!["name LIKE 'N%'"]);
         // num
         let node_filter_raw = NodeFilterRaw::new_where("age = ?", json!([18]));
-        assert_eq!(node_filter_raw.to_sql("users"), vec!["age = 18"]);
+        assert_eq!(node_filter_raw.to_value("users"), vec!["age = 18"]);
         // bool
         let node_filter_raw = NodeFilterRaw::new_where("active = ?", json!([false]));
-        assert_eq!(node_filter_raw.to_sql("users"), vec!["active = 0"]);
+        assert_eq!(node_filter_raw.to_value("users"), vec!["active = 0"]);
         // array num
         let node_filter_raw = NodeFilterRaw::new_where("gender IN ?", json!([[1, 2]]));
-        assert_eq!(node_filter_raw.to_sql("users"), vec!["gender IN (1, 2)"]);
+        assert_eq!(node_filter_raw.to_value("users"), vec!["gender IN (1, 2)"]);
         // array string
         let node_filter_raw = NodeFilterRaw::new_where("gender IN ?", json!([["male", "female"]]));
-        assert_eq!(node_filter_raw.to_sql("users"), vec!["gender IN ('male', 'female')"]);
+        assert_eq!(node_filter_raw.to_value("users"), vec!["gender IN ('male', 'female')"]);
         // having
         let node_filter_raw = NodeFilterRaw::new_having("count(*) > ?", json!([3]));
-        assert_eq!(node_filter_raw.to_sql("users"), vec!["count(*) > 3"]);
+        assert_eq!(node_filter_raw.to_value("users"), vec!["count(*) > 3"]);
     }
 }

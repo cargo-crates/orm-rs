@@ -17,7 +17,7 @@ use serde_json::{Value as JsonValue};
 
 pub trait NodeAble {
     fn get_condition(&self) -> &JsonValue;
-    fn to_sql(&self, table_name: &str) -> Vec<String>;
+    fn to_value(&self, table_name: &str) -> Vec<String>;
 }
 
 // #[derive(Debug)]

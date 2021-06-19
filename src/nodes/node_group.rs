@@ -17,7 +17,7 @@ impl NodeAble for NodeGroup {
     fn get_condition(&self) -> &JsonValue {
         &self.condition
     }
-    fn to_sql(&self, table_name: &str) -> Vec<String> {
+    fn to_value(&self, table_name: &str) -> Vec<String> {
         let mut vec = vec![];
         match self.get_condition() {
             JsonValue::Array(values) => {
@@ -39,8 +39,8 @@ mod tests {
     use super::*;
     use serde_json::json;
     #[test]
-    fn to_sql() {
+    fn to_value() {
         let node_group = NodeGroup::new(json!(["name", "age", "orders.type"]));
-        assert_eq!(node_group.to_sql("users"), vec!["`users`.`name`", "`users`.`age`", "orders.type"]);
+        assert_eq!(node_group.to_value("users"), vec!["`users`.`name`", "`users`.`age`", "orders.type"]);
     }
 }

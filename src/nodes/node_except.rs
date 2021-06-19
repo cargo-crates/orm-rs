@@ -16,7 +16,7 @@ impl NodeAble for NodeExcept {
     fn get_condition(&self) -> &JsonValue {
         &self.condition
     }
-    fn to_sql(&self, _table_name: &str) -> Vec<String> {
+    fn to_value(&self, _table_name: &str) -> Vec<String> {
         let mut vec = vec![];
         match self.get_condition() {
             JsonValue::Array(json_array) => {

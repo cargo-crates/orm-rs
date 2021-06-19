@@ -119,26 +119,26 @@ impl<T: ModelAble> QueryBuilder<T> {
             match node {
                 NodesType::Filter(node_filter) => {
                     match node_filter.get_type() {
-                        "where" => wheres_sql = [&wheres_sql[..], &node_filter.to_sql(&T::table_name())].concat(),
-                        "having" => havings_sql = [&havings_sql[..], &node_filter.to_sql(&T::table_name())].concat(),
+                        "where" => wheres_sql = [&wheres_sql[..], &node_filter.to_value(&T::table_name())].concat(),
+                        "having" => havings_sql = [&havings_sql[..], &node_filter.to_value(&T::table_name())].concat(),
                         _ => ()
                     }
                 },
                 NodesType::FilterRaw(node_filter_raw) => {
                     match node_filter_raw.get_type() {
-                        "where" => wheres_sql = [&wheres_sql[..], &node_filter_raw.to_sql(&T::table_name())].concat(),
-                        "having" => havings_sql = [&havings_sql[..], &node_filter_raw.to_sql(&T::table_name())].concat(),
+                        "where" => wheres_sql = [&wheres_sql[..], &node_filter_raw.to_value(&T::table_name())].concat(),
+                        "having" => havings_sql = [&havings_sql[..], &node_filter_raw.to_value(&T::table_name())].concat(),
                         _ => ()
                     }
                 },
                 NodesType::Group(node_group) => {
-                  groups_sql = [&groups_sql[..], &node_group.to_sql(&T::table_name())].concat()
+                  groups_sql = [&groups_sql[..], &node_group.to_value(&T::table_name())].concat()
                 },
                 NodesType::Order(node_order) => {
-                    orders_sql = [&orders_sql[..], &node_order.to_sql(&T::table_name())].concat()
+                    orders_sql = [&orders_sql[..], &node_order.to_value(&T::table_name())].concat()
                 },
                 NodesType::Except(node_except) => {
-                    let columns = node_except.to_sql(&T::table_name());
+                    let columns = node_except.to_value(&T::table_name());
                     for val in &columns {
                         match val.to_lowercase().as_ref() {
                             "where" => { wheres_sql = vec![] },
@@ -164,7 +164,7 @@ impl<T: ModelAble> QueryBuilder<T> {
         {
             let column_nodes = self.get_column_nodes();
             if let NodesType::Column(node_column) = column_nodes.last().unwrap() {
-                columns_sql = node_column.to_sql(&T::table_name());
+                columns_sql = node_column.to_value(&T::table_name());
             }
         }
         // create sql

@@ -47,7 +47,7 @@ impl NodeAble for NodeColumn {
     fn get_condition(&self) -> &JsonValue {
         &self.condition
     }
-    fn to_sql(&self, table_name: &str) -> Vec<String> {
+    fn to_value(&self, table_name: &str) -> Vec<String> {
         self.get_full_column_names(table_name)
     }
 }
@@ -62,8 +62,8 @@ mod tests {
         assert_eq!(node_column.get_full_column_names("users"), vec!["`users`.`name`", "`users`.`age`"]);
     }
     #[test]
-    fn to_sql() {
+    fn to_value() {
         let node_column = NodeColumn::new(json!(["name", "age"]));
-        assert_eq!(node_column.to_sql("users"), vec!["`users`.`name`", "`users`.`age`"]);
+        assert_eq!(node_column.to_value("users"), vec!["`users`.`name`", "`users`.`age`"]);
     }
 }

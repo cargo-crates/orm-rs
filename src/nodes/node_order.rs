@@ -18,7 +18,7 @@ impl NodeAble for NodeOrder {
     fn get_condition(&self) -> &JsonValue {
         &self.condition
     }
-    fn to_sql(&self, table_name: &str) -> Vec<String> {
+    fn to_value(&self, table_name: &str) -> Vec<String> {
         let mut vec = vec![];
         match self.get_condition() {
             JsonValue::Object(map) => {
@@ -59,13 +59,13 @@ mod tests {
     use super::*;
     use serde_json::json;
     #[test]
-    fn to_sql() {
+    fn to_value() {
         let node_order = NodeOrder::new(json!(["name", "age DESC"]));
-        assert_eq!(node_order.to_sql("users"), vec!["name ASC", "age DESC"]);
+        assert_eq!(node_order.to_value("users"), vec!["name ASC", "age DESC"]);
         let node_order = NodeOrder::new(json!({
             "age": "desc",
             "name": "asc"
         }));
-        assert_eq!(node_order.to_sql("users"), vec!["`users`.`age` DESC", "`users`.`name` ASC"]);
+        assert_eq!(node_order.to_value("users"), vec!["`users`.`age` DESC", "`users`.`name` ASC"]);
     }
 }
