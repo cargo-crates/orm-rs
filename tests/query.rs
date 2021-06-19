@@ -91,4 +91,11 @@ mod query {
         let query = query.select(json!(["name", "age", "users.address"]));
         assert_eq!(query.to_sql(), "SELECT `users`.`name`, `users`.`age`, users.address FROM `users`");
     }
+
+    #[test]
+    fn test_distinct() {
+        let mut query = User::query();
+        let query = query.distinct();
+        assert_eq!(query.to_sql(), "SELECT DISTINCT `users`.* FROM `users`");
+    }
 }

@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue, json};
 // use crate::methods::full_column_name;
-use crate::nodes::{NodeAble, NodesType, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder};
+use crate::nodes::{NodeAble, NodesType, NodeBool, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -105,11 +105,16 @@ impl<T: ModelAble> QueryBuilder<T> {
         }
         self
     }
+    pub fn distinct(&mut self) -> &mut Self {
+        self.nodes.push(NodesType::Bool(NodeBool::new_distinct()));
+        self
+    }
     pub fn to_sql(&self) -> String {
         let mut wheres_sql: Vec<String> = vec![];
         let mut havings_sql: Vec<String> = vec![];
         let mut groups_sql: Vec<String> = vec![];
         let mut orders_sql: Vec<String> = vec![];
+        let mut is_distinct = false;
         for node in &self.nodes {
             match node {
                 NodesType::Filter(node_filter) => {
@@ -133,24 +138,24 @@ impl<T: ModelAble> QueryBuilder<T> {
                     orders_sql = [&orders_sql[..], &node_order.to_sql(&T::table_name())].concat()
                 },
                 NodesType::Except(node_except) => {
-                    match node_except.get_condition() {
-                        JsonValue::Array(json_array) => {
-                            let columns: Vec<_> = json_array.into_iter().filter_map(|value| {
-                                if let JsonValue::String(value) = value { Some(value) } else { None }
-                            }).collect();
-                            for val in columns {
-                                match val.to_lowercase().as_ref() {
-                                    "where" => { wheres_sql = vec![] },
-                                    "group" => { groups_sql = vec![] },
-                                    "having" => { havings_sql = vec![] },
-                                    "order" => { orders_sql = vec![] },
-                                    _ => {}
-                                }
-                            }
+                    let columns = node_except.to_sql(&T::table_name());
+                    for val in &columns {
+                        match val.to_lowercase().as_ref() {
+                            "where" => { wheres_sql = vec![] },
+                            "group" => { groups_sql = vec![] },
+                            "having" => { havings_sql = vec![] },
+                            "order" => { orders_sql = vec![] },
+                            "distinct" => { is_distinct = false },
+                            _ => {}
                         }
-                        _ => ()
                     }
-                }
+                },
+                NodesType::Bool(node_bool) => {
+                  match node_bool.get_type() {
+                      "distinct" => is_distinct = true,
+                      _ => ()
+                  }
+                },
                 _ => ()
             }
         }
@@ -163,7 +168,11 @@ impl<T: ModelAble> QueryBuilder<T> {
             }
         }
         // create sql
-        let mut sql = format!("SELECT {} FROM `{}`", columns_sql.join(", "), T::table_name());
+        let mut sql = "SELECT".to_string();
+        if is_distinct {
+            sql = format!("{} DISTINCT", sql)
+        }
+        sql = format!("{} {} FROM `{}`", sql, columns_sql.join(", "), T::table_name());
         if wheres_sql.len() > 0 {
             sql = format!("{} WHERE {}", sql, wheres_sql.join(" AND "));
         }
