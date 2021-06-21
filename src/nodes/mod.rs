@@ -7,6 +7,7 @@ mod node_group;
 mod node_order;
 mod node_except;
 mod node_op;
+mod node_update;
 
 pub use node_column::NodeColumn;
 pub use node_bool::NodeBool;
@@ -17,6 +18,7 @@ pub use node_group::NodeGroup;
 pub use node_order::NodeOrder;
 pub use node_except::NodeExcept;
 pub use node_op::NodeOp;
+pub use node_update::NodeUpdate;
 use serde_json::{Value as JsonValue};
 
 pub trait NodeAble {
@@ -64,7 +66,8 @@ pub enum NodesType {
     Except(NodeExcept),
     Group(NodeGroup),
     Order(NodeOrder),
-    Op(NodeOp)
+    Op(NodeOp),
+    Update(NodeUpdate)
 }
 
 impl NodesType {}

@@ -1,6 +1,6 @@
 use serde_json::{Value as JsonValue, json};
 // use crate::methods::full_column_name;
-use crate::nodes::{NodeAble, NodesType, NodeBool, NodeSize, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder, NodeOp};
+use crate::nodes::{NodeAble, NodesType, NodeBool, NodeSize, NodeColumn, NodeFilter, NodeExcept, NodeFilterRaw, NodeGroup, NodeOrder, NodeOp, NodeUpdate};
 use crate::traits::ModelAble;
 use std::marker::PhantomData;
 
@@ -18,6 +18,7 @@ enum LockModes {
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct QueryBuilder<T: ModelAble> {
+    r#type: String,
     nodes: Vec<NodesType>,
     _marker: PhantomData<T>
 }
@@ -26,10 +27,16 @@ impl<T: ModelAble> QueryBuilder<T> {
     // pub fn new<T: ModelAble>() -> Self {
     pub fn new() -> QueryBuilder<T> {
         Self {
+            // select, update
+            r#type: "select".to_string(),
             // columns: vec![format!("`{}`.*", T::table_name())],
             nodes: vec![NodesType::Column(NodeColumn::new(json!(["*"])))],
             _marker: PhantomData
         }
+    }
+    fn set_type(&mut self, r#type: &str) -> &mut Self {
+        self.r#type = r#type.to_string();
+        self
     }
     pub fn r#where(&mut self, condition: JsonValue) -> &mut Self {
         self.nodes.push(NodesType::Filter(NodeFilter::new_where(condition)));
@@ -151,6 +158,7 @@ impl<T: ModelAble> QueryBuilder<T> {
         let mut limits_sql: Vec<String> = vec![];
         let mut offsets_sql: Vec<String> = vec![];
         let mut is_distinct = false;
+        let mut updates_sql: Vec<String> = vec![];
         for node in &self.nodes {
             match node {
                 NodesType::Filter(node_filter) => {
@@ -201,6 +209,9 @@ impl<T: ModelAble> QueryBuilder<T> {
                       _ => ()
                   }
                 },
+                NodesType::Update(node_update) => {
+                    updates_sql = [&updates_sql[..], &node_update.to_value(&T::table_name())].concat()
+                }
                 _ => ()
             }
         }
@@ -215,50 +226,69 @@ impl<T: ModelAble> QueryBuilder<T> {
         // op_nodes
         let op_nodes = self.get_op_nodes();
         // create sql
-        let mut sql = "SELECT".to_string();
-        let mut distinct_sql = "";
-        if is_distinct {
-            distinct_sql = "DISTINCT ";
-        }
-        match op_nodes.last() {
-            Some(node_type) => {
-                if let NodesType::Op(node_op) = node_type {
-                    match node_op.get_type() {
-                        "count" => sql = format!("{} COUNT({}{})", sql, distinct_sql, columns_sql.join(", ")),
-                        "sum" => sql = format!("{} SUM({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
-                        "avg" => sql = format!("{} AVG({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
-                        "min" => sql = format!("{} MIN({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
-                        "max" => sql = format!("{} MAX({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
-                        _ => ()
+        let mut sql;
+        match self.r#type.as_ref() {
+            "select" => {
+                sql = "SELECT".to_string();
+                let mut distinct_sql = "";
+                if is_distinct {
+                    distinct_sql = "DISTINCT ";
+                }
+                match op_nodes.last() {
+                    Some(node_type) => {
+                        if let NodesType::Op(node_op) = node_type {
+                            match node_op.get_type() {
+                                "count" => sql = format!("{} COUNT({}{})", sql, distinct_sql, columns_sql.join(", ")),
+                                "sum" => sql = format!("{} SUM({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
+                                "avg" => sql = format!("{} AVG({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
+                                "min" => sql = format!("{} MIN({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
+                                "max" => sql = format!("{} MAX({}{})", sql, distinct_sql, node_op.to_value(&T::table_name()).join(", ")),
+                                _ => ()
+                            }
+                        }
+                    },
+                    None => {
+                        sql = format!("{} {}{}", sql, distinct_sql, columns_sql.join(", "))
                     }
                 }
+                sql = format!("{} FROM `{}`", sql, T::table_name());
             },
-            None => {
-                sql = format!("{} {}{}", sql, distinct_sql, columns_sql.join(", "))
-            }
+            "update" => {
+                sql = format!("UPDATE `{}` SET", T::table_name());
+                if updates_sql.len() > 0 {
+                    sql = format!("{} {}", sql, updates_sql.join(", "));
+                } else {
+                    panic!("Not fount update values")
+                }
+            },
+            _ => panic!("Not support type: {}", self.r#type)
         }
-        sql = format!("{} FROM `{}`", sql, T::table_name());
         if wheres_sql.len() > 0 {
             sql = format!("{} WHERE {}", sql, wheres_sql.join(" AND "));
         }
-        if groups_sql.len() > 0 {
-            sql = format!("{} GROUP BY {}", sql, groups_sql.join(", "));
-            if havings_sql.len() > 0 {
-                sql = format!("{} HAVING {}", sql, havings_sql.join(" AND "));
-            }
-        }
-        if orders_sql.len() > 0 {
-            sql = format!("{} ORDER BY {}", sql, orders_sql.join(", "));
-        }
-        if limits_sql.len() > 0 {
-            if let Some(limit) = limits_sql.last() {
-                sql = format!("{} {}", sql, limit)
-            }
-        }
-        if offsets_sql.len() > 0 {
-            if let Some(offset) = offsets_sql.last() {
-                sql = format!("{} {}", sql, offset)
-            }
+        match self.r#type.as_ref() {
+            "select" => {
+                if groups_sql.len() > 0 {
+                    sql = format!("{} GROUP BY {}", sql, groups_sql.join(", "));
+                    if havings_sql.len() > 0 {
+                        sql = format!("{} HAVING {}", sql, havings_sql.join(" AND "));
+                    }
+                }
+                if orders_sql.len() > 0 {
+                    sql = format!("{} ORDER BY {}", sql, orders_sql.join(", "));
+                }
+                if limits_sql.len() > 0 {
+                    if let Some(limit) = limits_sql.last() {
+                        sql = format!("{} {}", sql, limit)
+                    }
+                }
+                if offsets_sql.len() > 0 {
+                    if let Some(offset) = offsets_sql.last() {
+                        sql = format!("{} {}", sql, offset)
+                    }
+                }
+            },
+            _ => ()
         }
         sql
     }
@@ -274,4 +304,14 @@ impl<T: ModelAble> QueryBuilder<T> {
     // fn get_except_nodes(&self) -> Vec<&NodesType> {
     //     self.nodes.iter().filter(|&node| match node { NodesType::Except(_) => true, _ => false }).collect()
     // }
+
+    // update
+    pub fn update_all(&mut self, condition: JsonValue) -> String {
+        self.set_type("update");
+        match &condition {
+            JsonValue::Object(_) => self.nodes.push(NodesType::Update(NodeUpdate::new(condition))),
+            _ => panic!("Error: order only support json array, got: {:?}", condition)
+        }
+        self.to_sql()
+    }
 }

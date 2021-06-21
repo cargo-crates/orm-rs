@@ -148,4 +148,13 @@ mod query {
         let query = query.max("id");
         assert_eq!(query.to_sql(), "SELECT MAX(`users`.`id`) FROM `users`");
     }
+
+    #[test]
+    fn test_update_all() {
+        let mut query = User::query();
+        query.r#where(json!({
+            "name": "lisi"
+        })).update_all(json!({ "gender": "male" }));
+        assert_eq!(query.to_sql(), "UPDATE `users` SET `users`.`gender` = 'male' WHERE `users`.`name` = 'lisi'");
+    }
 }
