@@ -157,4 +157,13 @@ mod query {
         })).update_all(json!({ "gender": "male" }));
         assert_eq!(query.to_sql(), "UPDATE `users` SET `users`.`gender` = 'male' WHERE `users`.`name` = 'lisi'");
     }
+
+    #[test]
+    fn test_delete_all() {
+        let mut query = User::query();
+        query.r#where(json!({
+            "name": "lisi"
+        })).delete_all();
+        assert_eq!(query.to_sql(), "DELETE FROM `users` WHERE `users`.`name` = 'lisi'");
+    }
 }

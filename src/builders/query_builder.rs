@@ -261,6 +261,9 @@ impl<T: ModelAble> QueryBuilder<T> {
                     panic!("Not fount update values")
                 }
             },
+            "delete" => {
+                sql = format!("DELETE FROM `{}`", T::table_name());
+            },
             _ => panic!("Not support type: {}", self.r#type)
         }
         if wheres_sql.len() > 0 {
@@ -305,13 +308,16 @@ impl<T: ModelAble> QueryBuilder<T> {
     //     self.nodes.iter().filter(|&node| match node { NodesType::Except(_) => true, _ => false }).collect()
     // }
 
-    // update
-    pub fn update_all(&mut self, condition: JsonValue) -> String {
+    pub fn update_all(&mut self, condition: JsonValue) -> &mut Self {
         self.set_type("update");
         match &condition {
             JsonValue::Object(_) => self.nodes.push(NodesType::Update(NodeUpdate::new(condition))),
             _ => panic!("Error: order only support json array, got: {:?}", condition)
         }
-        self.to_sql()
+        self
+    }
+    pub fn delete_all(&mut self) -> &mut Self {
+        self.set_type("delete");
+        self
     }
 }
